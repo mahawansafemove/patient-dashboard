@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แดชบอร์ดติดตามผู้ป่วยติดบ้าน-ติดเตียง | รพ.สต.มหาวัน</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'FC Minimal', 'Sarabun', sans-serif;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2e7d32;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .setup-notice {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 1400px;
+            color: #856404;
+        }
+
+        .setup-notice h3 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .setup-notice ol {
+            margin-left: 20px;
+            line-height: 1.8;
+            font-size: 14px;
+        }
+
+        .setup-notice code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .api-url-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #66bb6a;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+
+        .btn-primary {
+            background: #66bb6a;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: #43a047;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid;
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card.red {
+            border-left-color: #d32f2f;
+        }
+        
+        .stat-card.orange {
+            border-left-color: #f57c00;
+        }
+        
+        .stat-card.yellow {
+            border-left-color: #fbc02d;
+        }
+        
+        .stat-card.total {
+            border-left-color: #66bb6a;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2e7d32;
+        }
+        
+        .map-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        #map {
+            height: 500px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        
+        .search-filter {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .search-filter input,
+        .search-filter select {
+            padding: 10px 15px;
+            border: 2px solid #c8e6c9;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .search-filter input:focus,
+        .search-filter select:focus {
+            outline: none;
+            border-color: #66bb6a;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        thead {
+            background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+            color: white;
+        }
+        
+        th {
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e8f5e9;
+        }
+        
+        tbody tr:hover {
+            background-color: #f1f8e9;
+        }
+        
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .risk-badge.red, .risk-badge.แดง {
+            background-color: #d32f2f;
+        }
+        
+        .risk-badge.orange, .risk-badge.ส้ม {
+            background-color: #f57c00;
+        }
+        
+        .risk-badge.yellow, .risk-badge.เหลือง {
+            background-color: #fbc02d;
+        }
+        
+        .btn-navigate {
+            background: #66bb6a;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+        
+        .btn-navigate:hover {
+            background: #43a047;
+        }
+        
+        .legend {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f1f8e9;
+            border-radius: 8px;
+        }
+        
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2e7d32;
+        }
+        
+        .legend-items {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #66bb6a;
+        }
+        
+        .spinner {
+            border: 4px solid #c8e6c9;
+            border-top: 4px solid #66bb6a;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .popup-content {
+            font-family: 'FC Minimal', 'Sarabun', sans-serif;
+        }
+        
+        .popup-content h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .popup-content p {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+        
+        .popup-content strong {
+            color: #1b5e20;
+        }
+
+        .error-message {
+            background: #ffebee;
+            border: 2px solid #f44336;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px;
+            color: #c62828;
+        }
+
+        .last-update {
+            text-align: right;
+            color: #666;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏥 แดชบอร์ดติดตามผู้ป่วยติดบ้าน-ติดเตียง</h1>
+        <p>แผนอพยพกรณีเหตุฉุกเฉิน | รพ.สต.มหาวัน อ.แม่สอด จ.ตาก</p>
+    </div>
+
+    <div id="setup-section" class="setup-notice">
+        <h3>⚙️ ขั้นตอนการติดตั้ง Google Apps Script (ครั้งแรกเท่านั้น)</h3>
+        <ol>
+            <li>เปิด Google Sheets ของคุณ</li>
+            <li>ไปที่เมนู <strong>ส่วนขยาย (Extensions)</strong> → <strong>Apps Script</strong></li>
+            <li>ลบโค้ดเดิมทั้งหมด แล้ววางโค้ดจากไฟล์ <code>google-apps-script.js</code></li>
+            <li>คลิก <strong>บันทึก</strong> (💾)</li>
+            <li>คลิก <strong>Deploy</strong> → <strong>New deployment</strong></li>
+            <li>เลือก type: <strong>Web app</strong></li>
+            <li>ตั้งค่า: Execute as: <strong>Me</strong>, Who has access: <strong>Anyone</strong></li>
+            <li>คลิก <strong>Deploy</strong> และคัดลอก <strong>Web app URL</strong></li>
+            <li>นำ URL มาวางในช่องด้านล่าง แล้วกดโหลดข้อมูล</li>
+        </ol>
+        <input type="text" id="api-url" class="api-url-input" placeholder="วาง Web App URL ที่นี่ เช่น https://script.google.com/macros/s/...">
+        <button class="btn-primary" onclick="saveApiUrlAndLoad()">💾 บันทึก URL และโหลดข้อมูล</button>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>กำลังโหลดข้อมูล...</p>
+        </div>
+
+        <div id="error-section" class="error-message" style="display: none;">
+            <h3>❌ เกิดข้อผิดพลาด</h3>
+            <p id="error-message"></p>
+        </div>
+
+        <div id="dashboard" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card total">
+                    <div class="stat-label">ผู้ป่วยทั้งหมด</div>
+                    <div class="stat-value" id="total-patients">0</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-label">🔴 ระดับสูงมาก/แดง</div>
+                    <div class="stat-value" id="red-patients">0</div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-label">🟠 ระดับปานกลาง/ส้ม</div>
+                    <div class="stat-value" id="orange-patients">0</div>
+                </div>
+                <div class="stat-card yellow">
+                    <div class="stat-label">🟡 ระดับพอรอได้/เหลือง</div>
+                    <div class="stat-value" id="yellow-patients">0</div>
+                </div>
+            </div>
+
+            <div class="map-container">
+                <h2 style="color: #2e7d32; margin-bottom: 5px;">📍 แผนที่แสดงตำแหน่งผู้ป่วย</h2>
+                <p style="color: #666; font-size: 14px;">คลิกที่ marker เพื่อดูรายละเอียดและนำทาง</p>
+                <div id="map"></div>
+                <div class="legend">
+                    <div class="legend-title">สัญลักษณ์ระดับความเสี่ยง:</div>
+                    <div class="legend-items">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #d32f2f;"></div>
+                            <span>แดง - สูงมาก (ขาดการดูแล >6 ชม. ไม่ได้)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #f57c00;"></div>
+                            <span>ส้ม - ปานกลาง</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #fbc02d;"></div>
+                            <span>เหลือง - พอรอได้</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="last-update" id="last-update"></div>
+            </div>
+
+            <div class="table-container">
+                <h2 style="color: #2e7d32; margin-bottom: 15px;">📋 รายละเอียดผู้ป่วย</h2>
+                <div class="search-filter">
+                    <input type="text" id="search-name" placeholder="🔍 ค้นหาชื่อผู้ป่วย...">
+                    <select id="filter-risk">
+                        <option value="">ทุกระดับความเสี่ยง</option>
+                        <option value="แดง">🔴 แดง - สูงมาก</option>
+                        <option value="ส้ม">🟠 ส้ม - ปานกลาง</option>
+                        <option value="เหลือง">🟡 เหลือง - พอรอได้</option>
+                    </select>
+                    <select id="filter-village">
+                        <option value="">ทุกหมู่บ้าน</option>
+                    </select>
+                </div>
+                <table id="patient-table">
+                    <thead>
+                        <tr>
+                            <th>ชื่อ-สกุล</th>
+                            <th>อายุ</th>
+                            <th>หมู่ที่</th>
+                            <th>ประเภทผู้ป่วย</th>
+                            <th>ระดับความเสี่ยง</th>
+                            <th>ผู้ดูแล</th>
+                            <th>เบอร์โทร</th>
+                            <th>การนำทาง</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patient-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let markers = [];
+        let allPatients = [];
+        let API_URL = localStorage.getItem('patientDashboardApiUrl') || '';
+
+        if (API_URL) {
+            document.getElementById('setup-section').style.display = 'none';
+            document.getElementById('api-url').value = API_URL;
+        }
+
+        function saveApiUrlAndLoad() {
+            const url = document.getElementById('api-url').value.trim();
+            if (!url) {
+                alert('กรุณาใส่ Web App URL');
+                return;
+            }
+            API_URL = url;
+            localStorage.setItem('patientDashboardApiUrl', url);
+            document.getElementById('setup-section').style.display = 'none';
+            initMap();
+            loadData();
+        }
+
+        function parseCoordinates(coordString) {
+            if (!coordString) return null;
+            
+            const dmsPattern = /(\d+)°(\d+)'([\d.]+)"([NS])\s+(\d+)°(\d+)'([\d.]+)"([EW])/;
+            const dmsMatch = coordString.match(dmsPattern);
+            if (dmsMatch) {
+                const lat = parseInt(dmsMatch[1]) + parseInt(dmsMatch[2])/60 + parseFloat(dmsMatch[3])/3600;
+                const lng = parseInt(dmsMatch[5]) + parseInt(dmsMatch[6])/60 + parseFloat(dmsMatch[7])/3600;
+                return [lat, lng];
+            }
+            
+            const decimalPattern = /([\d.]+)°?\s*[NS],?\s*([\d.]+)°?\s*[EW]/;
+            const decimalMatch = coordString.match(decimalPattern);
+            if (decimalMatch) {
+                return [parseFloat(decimalMatch[1]), parseFloat(decimalMatch[2])];
+            }
+            
+            return null;
+        }
+
+        function getRiskColor(riskLevel) {
+            const risk = riskLevel?.toLowerCase() || '';
+            if (risk.includes('แดง')) return '#d32f2f';
+            if (risk.includes('ส้ม')) return '#f57c00';
+            if (risk.includes('เหลือง')) return '#fbc02d';
+            return '#757575';
+        }
+
+        function initMap() {
+            if (map) return;
+            map = L.map('map').setView([16.588, 98.593], 14);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 19
+            }).addTo(map);
+        }
+
+        function addMarker(patient) {
+            const coords = parseCoordinates(patient.coordinates);
+            if (!coords) return;
+
+            const color = getRiskColor(patient.riskLevel);
+            
+            const markerHtml = `
+                <div style="
+                    background-color: ${color};
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 16px;
+                ">
+                    ${patient.riskLevel?.includes('แดง') ? '🔴' : patient.riskLevel?.includes('ส้ม') ? '🟠' : '🟡'}
+                </div>
+            `;
+            
+            const icon = L.divIcon({
+                html: markerHtml,
+                className: 'custom-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            const marker = L.marker(coords, { icon: icon }).addTo(map);
+            
+            const popupContent = `
+                <div class="popup-content">
+                    <h3>${patient.name}</h3>
+                    <p><strong>อายุ:</strong> ${patient.age} ปี</p>
+                    <p><strong>หมู่ที่:</strong> ${patient.village}</p>
+                    <p><strong>ประเภท:</strong> ${patient.patientType}</p>
+                    <p><strong>ระดับความเสี่ยง:</strong> <span class="risk-badge ${patient.riskLevel?.toLowerCase()}">${patient.riskLevel || 'ไม่ระบุ'}</span></p>
+                    <p><strong>ผู้ดูแล:</strong> ${patient.caregiver} (${patient.phone})</p>
+                    <p><strong>โรคประจำตัว:</strong> ${patient.disease || '-'}</p>
+                    <button class="btn-navigate" onclick="navigateToPatient(${coords[0]}, ${coords[1]}, '${patient.name}')">
+                        🧭 นำทางไปที่บ้าน
+                    </button>
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            markers.push(marker);
+        }
+
+        function navigateToPatient(lat, lng, name) {
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+            window.open(url, '_blank');
+        }
+
+        async function loadData() {
+            if (!API_URL) {
+                document.getElementById('setup-section').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error-section').style.display = 'none';
+            
+            try {
+                const response = await fetch(API_URL);
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'ไม่สามารถโหลดข้อมูลได้');
+                }
+                
+                allPatients = result.data;
+                
+                updateStats();
+                renderTable(allPatients);
+                renderMap(allPatients);
+                populateVillageFilter();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                
+                const lastUpdate = new Date(result.lastUpdate);
+                document.getElementById('last-update').textContent = 
+                    `อัพเดทล่าสุด: ${lastUpdate.toLocaleString('th-TH')}`;
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error-section').style.display = 'block';
+                document.getElementById('error-message').textContent = error.message;
+            }
+        }
+
+        function updateStats() {
+            const total = allPatients.length;
+            const red = allPatients.filter(p => p.riskLevel?.includes('แดง')).length;
+            const orange = allPatients.filter(p => p.riskLevel?.includes('ส้ม')).length;
+            const yellow = allPatients.filter(p => p.riskLevel?.includes('เหลือง')).length;
+            
+            document.getElementById('total-patients').textContent = total;
+            document.getElementById('red-patients').textContent = red;
+            document.getElementById('orange-patients').textContent = orange;
+            document.getElementById('yellow-patients').textContent = yellow;
+        }
+
+        function renderTable(patients) {
+            const tbody = document.getElementById('patient-tbody');
+            tbody.innerHTML = '';
+            
+            patients.forEach(patient => {
+                const coords = parseCoordinates(patient.coordinates);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${patient.name}</td>
+                    <td>${patient.age}</td>
+                    <td>${patient.village}</td>
+                    <td>${patient.patientType}</td>
+                    <td><span class="risk-badge ${patient.riskLevel?.toLowerCase()}">${patient.riskLevel || 'ไม่ระบุ'}</span></td>
+                    <td>${patient.caregiver}</td>
+                    <td>${patient.phone}</td>
+                    <td>
+                        ${coords ? `<button class="btn-navigate" onclick="navigateToPatient(${coords[0]}, ${coords[1]}, '${patient.name}')">🧭 นำทาง</button>` : '-'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderMap(patients) {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            patients.forEach(patient => {
+                if (patient.coordinates) {
+                    addMarker(patient);
+                }
+            });
+        }
+
+        function populateVillageFilter() {
+            const villages = [...new Set(allPatients.map(p => p.village))].filter(v => v).sort();
+            const select = document.getElementById('filter-village');
+            select.innerHTML = '<option value="">ทุกหมู่บ้าน</option>';
+            villages.forEach(village => {
+                const option = document.createElement('option');
+                option.value = village;
+                option.textContent = `หมู่ ${village}`;
+                select.appendChild(option);
+            });
+        }
+
+        function filterPatients() {
+            const searchName = document.getElementById('search-name').value.toLowerCase();
+            const filterRisk = document.getElementById('filter-risk').value;
+            const filterVillage = document.getElementById('filter-village').value;
+            
+            const filtered = allPatients.filter(patient => {
+                const matchName = !searchName || patient.name.toLowerCase().includes(searchName);
+                const matchRisk = !filterRisk || patient.riskLevel?.includes(filterRisk);
+                const matchVillage = !filterVillage || patient.village == filterVillage;
+                return matchName && matchRisk && matchVillage;
+            });
+            
+            renderTable(filtered);
+            renderMap(filtered);
+        }
+
+        document.getElementById('search-name').addEventListener('input', filterPatients);
+        document.getElementById('filter-risk').addEventListener('change', filterPatients);
+        document.getElementById('filter-village').addEventListener('change', filterPatients);
+
+        window.onload = function() {
+            if (API_URL) {
+                initMap();
+                loadData();
+            }
+        };
+    </script>
+</body>
+</html>
